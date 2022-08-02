@@ -238,7 +238,7 @@ namespace jk {
 		int64_t now_sys_cpu_time = 0;
 		int64_t now_proc_cpu_time = 0;
 		int64_t rate = 0;
-		printf("into check_rate,stop:%d, status:%d, cpu_num:%d\n", stop, status, core_num);
+		printf("into check_rate,stop:%d, status:%d, cpu_num:%d, sleep_interval:%u\n", stop, status, core_num, get_check_interval());
 
 		while (!stop)
 		{
@@ -277,16 +277,10 @@ namespace jk {
 #define MS 1000   // linux uslee精度微秒
 #endif
 
-		if (core_num < 8)
+		if (core_num <= 8)
 			return 50 * MS;
-		else if (core_num < 16)
-			return 25 * MS;
-		else if (core_num < 32)
-			return 10 * MS;
-		else if (core_num < 64)
-			return 5 * MS;
 		else
-			return 2 * MS;
+			return 25 * MS;
 	}
 
 	int64_t jkwait::calculate_cpu_rate(int64_t& now_sys_cpu_time, int64_t& now_proc_cpu_time)
@@ -364,7 +358,10 @@ namespace jk {
 		Sleep(get_check_interval());
 		timeEndPeriod(1);
 #else
-		usleep(get_check_interval());
+		static struct timeval delay = {0, 0};
+		delay.tv_usec = get_check_interval();
+		select(0, NULL, NULL, NULL, &delay);
+		// usleep(get_check_interval());
 #endif
 	}
 
