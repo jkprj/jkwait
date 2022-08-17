@@ -4,17 +4,18 @@
 #include <string.h>
 #include <fcntl.h>
 #include <stdint.h>
+#include <time.h>
 
 #ifdef WIN32
 #include <process.h>
 #include <wtypes.h>
-#include <time.h>
 
 #pragma comment( lib,"winmm.lib" )
 #else
 #include <unistd.h>
 #include <pthread.h>
 #include <sys/sysinfo.h>
+#include <sys/select.h>
 #endif
 
 
@@ -277,10 +278,16 @@ namespace jk {
 #define MS 1000   // linux uslee精度微秒
 #endif
 
-		if (core_num <= 8)
+		if (core_num < 8)
 			return 50 * MS;
-		else
+		else if (core_num < 16)
 			return 25 * MS;
+		else if (core_num < 32)
+			return 10 * MS;
+		else if (core_num < 64)
+			return 5 * MS;
+		else
+			return 2 * MS;
 	}
 
 	int64_t jkwait::calculate_cpu_rate(int64_t& now_sys_cpu_time, int64_t& now_proc_cpu_time)
@@ -309,7 +316,8 @@ namespace jk {
 #ifdef WIN32
 		rate = (100 * proc_cpu_use) / sys_cpu_use;  // windows已经将核数计算在内
 #else
-		rate = (100 * core_num * proc_cpu_use) / sys_cpu_use;
+		// rate = (100 * core_num * proc_cpu_use) / sys_cpu_use;
+		rate = (100 * proc_cpu_use) / sys_cpu_use;
 #endif
 
 		return rate;
@@ -416,42 +424,47 @@ namespace jk {
 	int64_t jkwait::get_sys_cpu_time()
 	{
 		int64_t cpu_time = 0;
-		char stat_file[32] = "/proc/stat";
+		// char stat_file[32] = "/proc/stat";
 
-		char cpu_save[4096];
-		memset(cpu_save, 0, sizeof(cpu_save));
+		// char cpu_save[4096];
+		// memset(cpu_save, 0, sizeof(cpu_save));
 
-		int64_t a[16] = { 0 };
-		memset(a, 0, sizeof(a));
+		// int64_t a[16] = { 0 };
+		// memset(a, 0, sizeof(a));
 
-		FILE* fd = fopen(stat_file, "r");
-		if (NULL == fd)
-		{
-			printf("open stat file err, this can't happen!\n");
-			return -1;
-		}
+		// FILE* fd = fopen(stat_file, "r");
+		// if (NULL == fd)
+		// {
+		// 	printf("open stat file err, this can't happen!\n");
+		// 	return -1;
+		// }
 
-		if (fgets(cpu_save, sizeof(cpu_save), fd) == NULL)
-		{
-			printf("read cpu info from %s error\n", stat_file);
-			fclose(fd);
-			return -1;
-		}
+		// if (fgets(cpu_save, sizeof(cpu_save), fd) == NULL)
+		// {
+		// 	printf("read cpu info from %s error\n", stat_file);
+		// 	fclose(fd);
+		// 	return -1;
+		// }
 
-		fclose(fd);
+		// fclose(fd);
 
-		int ret_num = sscanf(cpu_save, "cpu %lu %lu %lu %lu %lu %lu %lu %lu %lu",
-			&a[0], &a[1], &a[2], &a[3], &a[4], &a[5], &a[6], &a[7], &a[8]);
-		if (ret_num < 4)
-		{
-			printf("read cpu info from %s error, info is less than 4\n", stat_file);
-			return -1;
-		}
+		// int ret_num = sscanf(cpu_save, "cpu %lu %lu %lu %lu %lu %lu %lu %lu %lu",
+		// 	&a[0], &a[1], &a[2], &a[3], &a[4], &a[5], &a[6], &a[7], &a[8]);
+		// if (ret_num < 4)
+		// {
+		// 	printf("read cpu info from %s error, info is less than 4\n", stat_file);
+		// 	return -1;
+		// }
 
-		for (int i = 0; i < ret_num; ++i)
-			cpu_time += a[i];
+		// for (int i = 0; i < ret_num; ++i)
+		// 	cpu_time += a[i];
 
 		//printf("get_sys_cpu_time cpu_time:%ld\n", cpu_time);
+		
+		struct timespec ts;
+		clock_gettime(CLOCK_MONOTONIC, &ts);
+
+		cpu_time = ts.tv_sec * 1000l * 1000l * 1000l + ts.tv_nsec;
 
 		return cpu_time;
 	}
@@ -459,62 +472,67 @@ namespace jk {
 	int64_t jkwait::get_pro_cpu_time()
 	{
 		int64_t cpu_time = 0;
-		uint32_t proc_pid = getpid();
+		// uint32_t proc_pid = getpid();
 
-		char pid_file[256];
-		memset(pid_file, 0, sizeof(pid_file));
+		// char pid_file[256];
+		// memset(pid_file, 0, sizeof(pid_file));
 
-		if (proc_pid == 0)
-			return -1;
+		// if (proc_pid == 0)
+		// 	return -1;
 
-		snprintf(pid_file, sizeof(pid_file) - 1, "/proc/%u/stat", proc_pid);
+		// snprintf(pid_file, sizeof(pid_file) - 1, "/proc/%u/stat", proc_pid);
 
-		int fd = open(pid_file, O_RDONLY);
-		if (fd < 0)
-		{
-			printf("open pid file %s error\n", pid_file);
-			return -1;
-		}
+		// int fd = open(pid_file, O_RDONLY);
+		// if (fd < 0)
+		// {
+		// 	printf("open pid file %s error\n", pid_file);
+		// 	return -1;
+		// }
 
-		char buf[512];
-		memset(buf, 0, sizeof(buf));
+		// char buf[512];
+		// memset(buf, 0, sizeof(buf));
 
-		int ret = read(fd, (void*)buf, sizeof(buf));
-		if (ret < 10 || ret >= (int)sizeof(buf))
-		{
-			printf("Read pid file  %s abnormal \n", pid_file);
-			close(fd);
-			return -1;
-		}
+		// int ret = read(fd, (void*)buf, sizeof(buf));
+		// if (ret < 10 || ret >= (int)sizeof(buf))
+		// {
+		// 	printf("Read pid file  %s abnormal \n", pid_file);
+		// 	close(fd);
+		// 	return -1;
+		// }
 
-		close(fd);
+		// close(fd);
 
-		int64_t utime = 0, stime = 0, cutime = 0, cstime = 0;
-		int pid = 0;
-		unsigned long rss = 0;
+		// int64_t utime = 0, stime = 0, cutime = 0, cstime = 0;
+		// int pid = 0;
+		// unsigned long rss = 0;
 
-		ret = sscanf(buf,
-			"%d %*s %*c "
-			"%*d %*d %*d %*d %*d "
-			"%*u %*u %*u %*u %*u "
-			"%llu %llu %llu %llu " /* utime stime cutime cstime */
-			"%*d %*d "
-			"%*d "
-			"%*d "
-			"%*u " /* start_time */
-			"%*u "
-			"%ld ",
-			&pid, &utime, &stime, &cutime, &cstime, &rss);
+		// ret = sscanf(buf,
+		// 	"%d %*s %*c "
+		// 	"%*d %*d %*d %*d %*d "
+		// 	"%*u %*u %*u %*u %*u "
+		// 	"%llu %llu %llu %llu " /* utime stime cutime cstime */
+		// 	"%*d %*d "
+		// 	"%*d "
+		// 	"%*d "
+		// 	"%*u " /* start_time */
+		// 	"%*u "
+		// 	"%ld ",
+		// 	&pid, &utime, &stime, &cutime, &cstime, &rss);
 
-		if (ret != 6)
-		{
-			printf("sscanf %d err\n", ret);
-			return -1;
-		}
+		// if (ret != 6)
+		// {
+		// 	printf("sscanf %d err\n", ret);
+		// 	return -1;
+		// }
 
-		cpu_time = utime + stime + cutime + cstime;
+		// cpu_time = utime + stime + cutime + cstime;
 
 		//printf("get_pro_cpu_time, cpu_time:%ld, utime:%ld, stime:%ld, cutime:%ld, cstime:%ld\n", cpu_time, utime, stime, cutime, cstime);
+
+		struct timespec ts;
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &ts);
+
+		cpu_time = ts.tv_sec * 1000l * 1000l * 1000l + ts.tv_nsec;
 
 		return cpu_time;
 	}
