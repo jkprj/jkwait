@@ -1,5 +1,5 @@
 # jkwait
-运行时限制cpu使用率（CPU Limit）
+这是一个运行时限制程序cpu使用率（CPU Limit）的代码封装，能够比较有效的限制程序CPU的使用率。
 
 # 支持环境
 windows，linux
