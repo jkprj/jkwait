@@ -1,4 +1,4 @@
-#ifndef __U_WAIT_H
+﻿#ifndef __U_WAIT_H
 #define __U_WAIT_H
 
 #define JK_WAIT_START            start();

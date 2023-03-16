@@ -1,4 +1,4 @@
-#ifndef __U_WAIT_H
+﻿#ifndef __U_WAIT_H
 #define __U_WAIT_H
 
 #define JK_WAIT_START            jk::start();
@@ -12,7 +12,7 @@ namespace jk {
 		RUNNING
 	};
 
-	void start();
+	int start();
 
 	/* 尝试是否需要等待，使用的越密集限制CPU效果越好（当然，如果不觉得太密集会不好看的话）
 	*  代码中插入try_wait：
@@ -30,6 +30,8 @@ namespace jk {
 
 	// 获取uwait检查运行状态，UNRUN 异常，RUNNING 正常
 	int wait_status();
+
+	void stop();
 
 }
 

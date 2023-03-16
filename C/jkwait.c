@@ -1,4 +1,4 @@
-#include "jkwait.h"
+﻿#include "jkwait.h"
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
@@ -287,6 +287,7 @@ static void *thread_cb(void *arg)
 
 static void run_thread()
 {
+	_stop = FALSE;
 	int ret = 0;
 
 	for (int i = 0; i < 3; i++)
@@ -383,8 +384,6 @@ int wait_status()
 int start()
 {
 	stop();
-
-	_stop = FALSE;
 
 	if (0 == init())
 		run_thread();

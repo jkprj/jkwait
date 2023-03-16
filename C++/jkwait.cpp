@@ -1,4 +1,4 @@
-#include "jkwait.h"
+﻿#include "jkwait.h"
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
@@ -43,21 +43,22 @@ namespace jk {
 		int32_t unlock();
 
 		void check_sleep();
+		uint32_t get_check_interval();
 	public:
 		void try_wait();
 		int set_limit(int rate);
 		int status_();
-		void start();
+		int start();
+		void stop();
 
 		void check_rate();
-		uint32_t get_check_interval();
 	public:
 		static jkwait w;
 	private:
 
 		int rate_limit;
 		int status;
-		bool stop;
+		bool _stop;
 
 		int64_t proc_pre_cpu_time;
 		int64_t sys_pre_cpu_time;
@@ -82,7 +83,7 @@ namespace jk {
 
 	jkwait::jkwait()
 		: rate_limit(DEFAULT_RATE)
-		, stop(false)
+		, _stop(false)
 		, status(UNRUN)
 	{
 	}
@@ -90,24 +91,7 @@ namespace jk {
 
 	jkwait::~jkwait()
 	{
-		stop = true;
-
-#ifdef WIN32
-		if (NULL != wait)
-			CloseHandle(wait);
-
-		if (NULL != th_handle)
-		{
-			WaitForSingleObject(th_handle, INFINITE);
-			CloseHandle(th_handle);
-		}
-#else
-		if (0 != th_handle)
-			pthread_join(th_handle, NULL);
-
-		pthread_rwlock_destroy(&wait);
-		pthread_rwlockattr_destroy(&lk_attr);
-#endif
+		stop();
 	}
 
 	int jkwait::init()
@@ -181,10 +165,38 @@ namespace jk {
 	}
 
 
-	void jkwait::start()
+	int jkwait::start()
 	{
+		stop();
+
 		if (0 == init())
 			run_thread();
+
+		return status;
+	}
+
+
+	void jkwait::stop()
+	{
+		_stop = true;
+
+#ifdef WIN32
+		if (NULL != wait)
+			CloseHandle(wait);
+
+		if (NULL != th_handle)
+		{
+			WaitForSingleObject(th_handle, INFINITE);
+			CloseHandle(th_handle);
+		}
+#else
+		if (0 != th_handle)
+			pthread_join(th_handle, NULL);
+
+		pthread_rwlock_destroy(&wait);
+		pthread_rwlockattr_destroy(&lk_attr);
+#endif
+		status = UNRUN;
 	}
 
 #ifdef WIN32
@@ -201,6 +213,7 @@ namespace jk {
 	void jkwait::run_thread()
 	{
 		int ret = 0;
+		_stop = false;
 
 		for (int i = 0; i < 3; i++)
 		{
@@ -239,13 +252,13 @@ namespace jk {
 		int64_t now_sys_cpu_time = 0;
 		int64_t now_proc_cpu_time = 0;
 		int64_t rate = 0;
-		printf("into check_rate,stop:%d, status:%d, cpu_num:%d, sleep_interval:%u\n", stop, status, core_num, get_check_interval());
+		printf("into check_rate,stop:%d, status:%d, cpu_num:%d, sleep_interval:%u\n", _stop, status, core_num, get_check_interval());
 
-		while (!stop)
+		while (!_stop)
 		{
 			check_sleep();
 
-			if (stop)
+			if (_stop)
 				break;
 
 			rate = calculate_cpu_rate(now_sys_cpu_time, now_proc_cpu_time);
@@ -267,7 +280,7 @@ namespace jk {
 			islocked = false;
 		}
 
-		printf("leave check_rate,stop:%d, status:%d\n", stop, status);
+		printf("leave check_rate,stop:%d, status:%d\n", _stop, status);
 	}
 
 	uint32_t jkwait::get_check_interval()
@@ -457,9 +470,14 @@ namespace jk {
 	}
 
 
-	void start()
+	void stop()
 	{
-		jkwait::w.start();
+		jkwait::w.stop();
+	}
+
+	int start()
+	{
+		return jkwait::w.start();
 	}
 
 	void try_wait()
