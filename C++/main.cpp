@@ -11,7 +11,7 @@
 #endif // WIN32
 
 
-double calculate();
+long long calculate();
 
 #ifdef WIN32
 unsigned int __stdcall thread__xxx_cb(void* arg)
@@ -57,9 +57,9 @@ int main()
 	
 }
 
-double calculate()
+long long calculate()
 {
-	double i = time(0);
+	long long i = time(0);
 
 	i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++;
 	i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++; i++;
